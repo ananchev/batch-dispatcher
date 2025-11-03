@@ -1,0 +1,106 @@
+# Example configuration file for batch-dispatcher
+# Copy this to config.yaml and adjust
+#
+# NOTE: Path formats:
+#   Windows - Forward slashes:     "C:/data/input"     (simpler, recommended)
+#   Windows - Escaped backslashes: "C:\\data\\input"   (requires double backslash in YAML)
+#   Linux/Mac:                     "/data/input"       (forward slashes)
+# Quotes are required for paths.
+
+# Executable configuration
+executable:
+  # Path to the executable/script to run for each file
+  # Can be .exe, .bat, .ps1, etc.
+  path: "C:\\tools\\processor.exe"
+  
+  # Arguments template for the executable
+  # The {input} placeholder will be replaced with each file's full path at runtime
+  # Depending on files found in the configured input directory (see input section below),
+  # the executable will be run once for each file with {input} replaced by that file's path
+  # Example: The template below will execute as:
+  #   processor.exe --input-file C:\data\input\file001.csv --flag1 --parameter1 value1
+  #   processor.exe --input-file C:\data\input\file002.csv --flag1 --parameter1 value1
+  #   processor.exe --input-file C:\data\input\file003.csv --flag1 --parameter1 value1
+  # An unlimited flags and parameter values can be added, but {input} is the only dynamic placeholder
+  # IMPORTANT: "{input}" is a hardcoded placeholder - do not change this literal string
+  default_args:
+    - "--input-file"
+    - "{input}"                                # This exact string "{input}" gets replaced at runtime
+    - "--flag1"
+    - "--parameter1"
+    - "value1"
+  
+  # Optional: Working directory for executable
+  # Leave empty to use current directory
+  working_directory: ""
+  
+  # Timeout for each file execution (format: 5s, 1m, 30m, 1h)
+  # Use 0 for no timeout (infinite)
+  timeout: "5m"
+  
+  # Optional: Environment variables to set for the executable
+  # These will be added to the system environment
+  # Format: ENV_VAR_NAME: "value"
+  environment:
+    ENV_VAR1: "value1"
+    ENV_VAR2: "value2"
+    ENV_VAR3: "C:\\some\\path"
+
+# Input configuration
+input:
+  # Directory containing files to process
+  source_directory: "C:\\data\\input"
+  
+  # File pattern to match (glob pattern)
+  # Examples: "*.csv", "data_*.txt", "**/*.csv" (recursive)
+  file_pattern: "*.csv"
+  
+  # Optional: Limit number of files to process (0 = all files)
+  # Files are sorted alphabetically first, then the first N files are processed
+  # Example: max_files: 10 with 100 files found → processes first 10 alphabetically sorted files
+  max_files: 0
+
+# Output configuration
+output:
+  # Base directory for processed files
+  # Worker-specific folders will be created: processed_worker01, processed_worker02, etc.
+  processed_directory: "C:\\data\\output\\processed"
+  
+  # Base directory for files that failed processing
+  # Worker-specific folders will be created: errors_worker01, errors_worker02, etc.
+  errors_directory: "C:\\data\\output\\errors"
+
+# Worker configuration
+workers:
+  # Number of parallel workers
+  count: 4
+
+# Logging configuration
+logging:
+  # Central log file for all operations
+  log_file: "C:\\data\\logs\\dispatcher.log"
+  
+  # Optional: Directory for per-file execution logs
+  # If specified (non-empty), individual log files are created for each file execution
+  # If omitted or empty, no per-file logs are created
+  # Logs saved as: <directory>/<filename>_<timestamp>_worker<NN>.log
+  per_file_log_directory: "C:\\data\\logs\\executions"
+
+# Advanced options
+advanced:
+  # Enable progress display in console (counters, percentage)
+  show_progress: true
+  
+  # Fail-fast mode: Stop all workers on first failure (default behavior if both false)
+  # If true, first error stops all workers from picking up new jobs
+  fail_fast: false
+  
+  # Continue-on-error mode: Keep processing all files despite failures
+  # If true, failed files moved to errors/ folder, processing continues
+  # Cannot be used with fail_fast (mutually exclusive)
+  continue_on_error: false
+  
+  # Dry-run mode: Preview execution plan without actually running commands
+  # If true, prints what would be executed but doesn't run anything
+  # No files are moved, no commands executed
+  dry_run: false
