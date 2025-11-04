@@ -69,12 +69,24 @@ func main() {
 
 	// Create jobs from file paths
 	jobs := make([]*models.Job, 0, len(filePaths))
+	totalLines := 0
 	for _, filePath := range filePaths {
+		// Count lines in the file (excluding header)
+		lineCount, err := filesystem.CountFileLines(filePath)
+		if err != nil {
+			log.Error("Warning: Failed to count lines in %s: %v", filepath.Base(filePath), err)
+			lineCount = 0 // Continue processing even if line count fails
+		}
+		totalLines += lineCount
+
 		jobs = append(jobs, &models.Job{
-			FilePath: filePath,
-			FileName: filepath.Base(filePath),
+			FilePath:  filePath,
+			FileName:  filepath.Base(filePath),
+			LineCount: lineCount,
 		})
 	}
+
+	log.Info("Total data lines across all files: %d", totalLines)
 
 	// Create progress counter
 	counter := logger.NewProgressCounter(len(jobs), cfg.Advanced.ShowProgress)

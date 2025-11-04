@@ -13,14 +13,16 @@ import (
 
 // Dispatcher coordinates workers and job execution
 type Dispatcher struct {
-	config     *models.Config
-	logger     *logger.Logger
-	counter    *logger.ProgressCounter
-	jobQueue   chan *models.Job
-	results    chan models.JobResult
-	wg         sync.WaitGroup
-	failSignal chan struct{} // Signal to stop workers on first failure
-	failOnce   sync.Once     // Ensure fail signal sent only once
+	config         *models.Config
+	logger         *logger.Logger
+	counter        *logger.ProgressCounter
+	jobQueue       chan *models.Job
+	results        chan models.JobResult
+	wg             sync.WaitGroup
+	failSignal     chan struct{} // Signal to stop workers on first failure
+	failOnce       sync.Once     // Ensure fail signal sent only once
+	processedLines int           // Total lines processed across all files
+	linesMu        sync.Mutex    // Protects processedLines
 }
 
 // New creates a new Dispatcher
@@ -100,6 +102,10 @@ func (d *Dispatcher) Run(ctx context.Context, jobs []*models.Job) error {
 	if completed < totalFiles {
 		d.logger.Info("  Not processed: %d (stopped due to fail-fast)", totalFiles-completed)
 	}
+	d.linesMu.Lock()
+	processedLines := d.processedLines
+	d.linesMu.Unlock()
+	d.logger.Info("  Total data lines processed: %d", processedLines)
 	d.logger.Info("Total processing time: %v", totalDuration.Round(time.Second))
 
 	return nil
@@ -189,6 +195,11 @@ func (d *Dispatcher) collectResults(done chan struct{}) {
 	defer close(done)
 
 	for result := range d.results {
+		// Accumulate line count for all processed files
+		d.linesMu.Lock()
+		d.processedLines += result.Job.LineCount
+		d.linesMu.Unlock()
+
 		if result.Success {
 			d.counter.IncrementSuccess()
 		} else {

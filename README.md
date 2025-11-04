@@ -17,33 +17,34 @@ Configuration is done through YAML config file as follows:
 
 ```yaml
 executable:
-  # Example execution: processor.exe --input "C:/data/input/file1.csv" --flag1 --parameter1 value1
-  path: "C:/tools/processor.exe"               # Path to executable or script
+  # Example execution: processor.exe --input "C:\data\input\file1.csv" --flag1 --parameter1 value1 -flag2=value2
+  path: "C:\\tools\\processor.exe"               # Path to executable or script
   default_args:                                # Arguments template (use {input} placeholder for file path)
     - "--input"
     - "{input}"                                # IMPORTANT: "{input}" is a hardcoded placeholder - do not change this literal string
     - "--flag1"                                # Optional: Add any additional flags your executable needs
     - "--parameter1"                           # Optional: Add parameters with values
-    - "value1"                                 # Optional: The value for --parameter1                                        
+    - "value1"                                 # Optional: The value for --parameter1
+    - "-flag2=value2"                          # Optional: Another example flag using -flag=value notation
   timeout: "5m"                                # Per input file timeout (e.g., "5m", "30m", "1h", "0" for infinite)
   environment:                                 # Optional environment variables
     VAR1: "value1"
   working_directory: ""                        # Optional working directory
 
 input:
-  source_directory: "C:/data/input"            # Where to find input files files
+  source_directory: "C:\\data\\input"            # Where to find input files files
   file_pattern: "*.csv"                        # Glob matching pattern (e.g. "*.csv", "data_*.txt") to filter input files
   max_files: 0                                 # Number of files to process (0 = all): sort alphabetically, then first N are processed
 output:
-  processed_directory: "C:/data/processed"     # Base name for successful files (creates: C:/data/processed_worker01, processed_worker02, etc.)
-  errors_directory: "C:/data/errors"           # Base name for failed files (creates: C:/data/errors_worker01, errors_worker02, etc.)
+  processed_directory: "C:\\data\\processed"     # Base name for successful files (creates: C:\data\processed_worker01, processed_worker02, etc.)
+  errors_directory: "C:\\data\\errors"           # Base name for failed files (creates: C:\data\errors_worker01, errors_worker02, etc.)
 
 workers:
   count: 4                                     # Number of parallel workers (minimum 1)
 
 logging:
-  log_file: "C:/data/logs/dispatcher.log"      # Central log file path, timestamp added automatically, e.g., dispatcher_20251104-123045.log)
-  per_file_log_directory: "C:/data/logs/executions"  # Per-file logs directory (omit or leave empty to disable per-file logs)
+  log_file: "C:\\data\\logs\\dispatcher.log"      # Central log file path, timestamp added automatically, e.g., dispatcher_20251104-123045.log)
+  per_file_log_directory: "C:\\data\\logs\\executions"  # Per-file logs directory (omit or leave empty to disable per-file logs)
 
 advanced:
   show_progress: true                          # Display progress counter
@@ -57,7 +58,7 @@ advanced:
 
 ### Input
 ```
-C:/data/input/
+C:\data\input\
 ├── file1.csv
 ├── file2.csv
 ├── file3.csv
@@ -70,28 +71,30 @@ C:/data/input/
 - Format: `<base_directory>_worker01`, `<base_directory>_worker02`, etc.
 
 ```
-C:/data/
-├── processed_worker01/
+C:\data\
+├── processed_worker01\
 │   ├── file1.csv
 │   └── file3.csv
-├── processed_worker02/
+├── processed_worker02\
 │   └── file2.csv
-├── errors_worker03/
+├── errors_worker03\
 │   └── file4.csv
-└── logs/
+└── logs\
     ├── dispatcher.log
-    └── executions/
-        ├── file1_20251103_143525.log
-        ├── file2_20251103_143532.log
-        ├── file3_20251103_143540.log
-        └── file4_20251103_143548.log
+    └── executions\
+        ├── success\
+        │   ├── file1_20251103_143525.log
+        │   ├── file2_20251103_143532.log
+        │   └── file3_20251103_143540.log
+        ├── failed\
+        │   └── file4_20251103_143548.log
+        └── timeout\
 ```
 
 
 ## Logging
 
-### Central Log (`dispatcher.log`)
-All operations logged with timestamps:
+### Central Log
 ```
 2025/11/03 14:35:22 INFO: Batch Dispatcher starting
 2025/11/03 14:35:22 INFO: Found 25 files to process
@@ -103,17 +106,16 @@ All operations logged with timestamps:
 ```
 
 ### Per-File Logs
-Detailed execution log for each file:
 ```
 =================================================================================
 Execution Log - file1.csv
 =================================================================================
 Worker: 01
 Start Time: 2025-11-03 14:35:23
-File: C:/data/input/file1.csv
+File: C:\data\input\file1.csv
 
 COMMAND:
-C:/tools/processor.exe --input "C:/data/input/file1.csv"
+C:\tools\processor.exe --input "C:\data\input\file1.csv"
 
 ENVIRONMENT VARIABLES:
 VAR1=value1
@@ -134,7 +136,6 @@ Duration: 12.5s
 ```
 
 ### Console Output
-Real-time progress (if enabled):
 ```
 2025/11/03 14:35:22 INFO: Batch Dispatcher starting
 2025/11/03 14:35:22 INFO: Found 25 files to process
@@ -168,7 +169,7 @@ default_args:
 
 Executed Command:
 ```bash
-processor.exe --input-file "C:/data/input/file1.csv" --output "result.xml"
+processor.exe --input-file "C:\data\input\file1.csv" --output "result.xml"
 ```
 
 
@@ -181,8 +182,8 @@ Windows example:
 ```yaml
 executable:
   environment:
-    JAVA_HOME: "C:/Apps/Java/jdk-17"
-    PATH: "${JAVA_HOME}/bin;${PATH}"           # Windows uses semicolon (;) as path separator
+    JAVA_HOME: "C:\\Apps\\Java\\jdk-17"
+    PATH: "${JAVA_HOME}\\bin;${PATH}"          # Windows uses semicolon (;) as path separator
     USERPROFILE: "${USERPROFILE}"              # Pass through user profile directory
     APPDATA: "${APPDATA}"                      # Pass through application data directory
     LOCALAPPDATA: "${LOCALAPPDATA}"            # Pass through local application data directory
@@ -200,7 +201,7 @@ executable:
 ```
 
 Both will execute with the environment variables expanded and merged with system environment. If system PATH is `C:\Windows\system32` (Windows) or `/usr/bin:/bin` (Linux), the executable will run with:
-- Windows: `PATH=C:/Apps/Java/jdk-17/bin;C:\Windows\system32`
+- Windows: `PATH=C:\Apps\Java\jdk-17\bin;C:\Windows\system32`
 - Linux/Mac: `PATH=/usr/lib/jvm/java-17/bin:/usr/bin:/bin`
 
 
@@ -211,24 +212,24 @@ Both will execute with the environment variables expanded and merged with system
 ```yaml
 # config.yaml
 executable:
-  path: "C:/tools/processor.exe"
+  path: "C:\\tools\\processor.exe"
   default_args: ["--input", "{input}"]
   timeout: "5m"
 
 input:
-  source_directory: "C:/data/input"
+  source_directory: "C:\\data\\input"
   file_pattern: "*.csv"
 
 output:
-  processed_directory: "C:/data/processed"
-  errors_directory: "C:/data/errors"
+  processed_directory: "C:\\data\\processed"
+  errors_directory: "C:\\data\\errors"
 
 workers:
   count: 4
 
 logging:
-  log_file: "C:/data/logs/dispatcher.log"
-  per_file_log_directory: "C:/data/logs/executions"
+  log_file: "C:\\data\\logs\\dispatcher.log"
+  per_file_log_directory: "C:\\data\\logs\\executions"
 
 advanced:
   show_progress: true
@@ -238,8 +239,8 @@ advanced:
 
 An example how to run a Java application with custom environment variables. This will execute as:
 ```bash
-java -jar C:/tools/app.jar --input "C:/data/input/file1.csv"
-java -jar C:/tools/app.jar --input "C:/data/input/file2.csv"
+java -jar C:\tools\app.jar --input "C:\data\input\file1.csv"
+java -jar C:\tools\app.jar --input "C:\data\input\file2.csv"
 ...
 ```
 
@@ -250,12 +251,12 @@ This is a partial configuration showing only the `executable` section. A complet
 executable:
   path: "java"                                 # Java executable (will use JAVA_HOME from environment below)
   environment:
-    JAVA_HOME: "C:/Apps/Java/jdk-17"
-    PATH: "${JAVA_HOME}/bin;${PATH}"           # Add Java to PATH using variable expansion
+    JAVA_HOME: "C:\\Apps\\Java\\jdk-17"
+    PATH: "${JAVA_HOME}\\bin;${PATH}"           # Add Java to PATH using variable expansion
     USERPROFILE: "${USERPROFILE}"              # Pass through user profile directory
     APPDATA: "${APPDATA}"                      # Pass through application data directory
     LOCALAPPDATA: "${LOCALAPPDATA}"            # Pass through local application data directory
-  default_args: ["-jar", "C:/tools/app.jar", "--input", "{input}"]  # Run JAR with input file
+  default_args: ["-jar", "C:\\tools\\app.jar", "--input", "{input}"]  # Run JAR with input file
   timeout: "10m"
 ```
 
@@ -265,27 +266,27 @@ executable:
 ## Project Structure
 
 ```
-batch-dispatcher/
-├── main.go                      # Entry point
-├── config/
+batch-dispatcher\
+├── main.go                     # Entry point
+├── config\
 │   ├── config.go               # YAML loading & validation
 │   └── config_test.go
-├── dispatcher/
+├── dispatcher\
 │   └── dispatcher.go           # Worker pool orchestration
-├── executor/
+├── executor\
 │   ├── executor.go             # Command execution
 │   └── executor_test.go
-├── filesystem/
+├── filesystem\
 │   ├── scanner.go              # File scanning
 │   ├── scanner_test.go
 │   ├── handler.go              # File moving
 │   └── handler_test.go
-├── logger/
+├── logger\
 │   ├── logger.go               # Logging
 │   ├── counter.go              # Progress counter
 │   └── logger_test.go
-├── models/
+├── models\
 │   └── types.go                # Data structures
 ├── config.example.yaml         # Configuration template
-└── README.md                   # This file
+└── README.md                   
 ```

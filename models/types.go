@@ -67,6 +67,7 @@ type Job struct {
 	FileIndex  int       // Position in queue (1-based for display)
 	TotalFiles int       // Total number of files
 	QueuedAt   time.Time // When job was queued
+	LineCount  int       // Number of data lines in file (excluding header)
 }
 
 // String returns a human-readable representation of the job

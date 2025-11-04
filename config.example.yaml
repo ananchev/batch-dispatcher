@@ -18,9 +18,9 @@ executable:
   # Depending on files found in the configured input directory (see input section below),
   # the executable will be run once for each file with {input} replaced by that file's path
   # Example: The template below will execute as:
-  #   processor.exe --input-file C:\data\input\file001.csv --flag1 --parameter1 value1
-  #   processor.exe --input-file C:\data\input\file002.csv --flag1 --parameter1 value1
-  #   processor.exe --input-file C:\data\input\file003.csv --flag1 --parameter1 value1
+  #   processor.exe --input-file C:\data\input\file001.csv --flag1 --parameter1 value1 -flag2=value2
+  #   processor.exe --input-file C:\data\input\file002.csv --flag1 --parameter1 value1 -flag2=value2
+  #   processor.exe --input-file C:\data\input\file003.csv --flag1 --parameter1 value1 -flag2=value2
   # An unlimited flags and parameter values can be added, but {input} is the only dynamic placeholder
   # IMPORTANT: "{input}" is a hardcoded placeholder - do not change this literal string
   default_args:
@@ -29,6 +29,7 @@ executable:
     - "--flag1"
     - "--parameter1"
     - "value1"
+    - "-flag2=value2"                          
   
   # Optional: Working directory for executable
   # Leave empty to use current directory

@@ -137,6 +137,22 @@ func (l *Logger) WritePerFileLog(result models.JobResult, execConfig *models.Exe
 		return "", nil
 	}
 
+	// Determine status subdirectory
+	var statusDir string
+	if result.TimedOut {
+		statusDir = "timeout"
+	} else if result.Success {
+		statusDir = "success"
+	} else {
+		statusDir = "failed"
+	}
+
+	// Create status subdirectory if it doesn't exist
+	logDir := filepath.Join(l.perFileLogDir, statusDir)
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create log status directory: %w", err)
+	}
+
 	// Generate log filename: <filename>_<timestamp>.log
 	timestamp := result.StartTime.Format("20060102_150405")
 	baseFileName := filepath.Base(result.Job.FileName)
@@ -145,7 +161,7 @@ func (l *Logger) WritePerFileLog(result models.JobResult, execConfig *models.Exe
 	nameWithoutExt := baseFileName[:len(baseFileName)-len(ext)]
 
 	logFileName := fmt.Sprintf("%s_%s.log", nameWithoutExt, timestamp)
-	logPath := filepath.Join(l.perFileLogDir, logFileName)
+	logPath := filepath.Join(logDir, logFileName)
 
 	// Create log file
 	logFile, err := os.Create(logPath)

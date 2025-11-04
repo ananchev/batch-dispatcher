@@ -317,6 +317,121 @@ func TestWritePerFileLog(t *testing.T) {
 	if !strings.Contains(contentStr, "SUCCESS") {
 		t.Error("Log should contain success status")
 	}
+
+	// Verify file is in success subdirectory
+	if !strings.Contains(logPath, string(filepath.Separator)+"success"+string(filepath.Separator)) {
+		t.Errorf("Log should be in success subdirectory, got path: %s", logPath)
+	}
+}
+
+func TestWritePerFileLog_Failed(t *testing.T) {
+	tmpDir := t.TempDir()
+	perFileDir := filepath.Join(tmpDir, "per-file-logs")
+
+	logger, err := New("", perFileDir)
+	if err != nil {
+		t.Fatalf("Failed to create logger: %v", err)
+	}
+	defer logger.Close()
+
+	job := &models.Job{
+		FilePath: "C:\\data\\test.csv",
+		FileName: "test.csv",
+	}
+
+	result := models.JobResult{
+		Job:          job,
+		WorkerID:     1,
+		Success:      false,
+		ExitCode:     1,
+		ErrorMessage: "execution failed",
+		StartTime:    time.Now(),
+		EndTime:      time.Now().Add(500 * time.Millisecond),
+		Duration:     500 * time.Millisecond,
+		Stdout:       "",
+		Stderr:       "error output",
+	}
+
+	execConfig := &models.ExecutableConfig{
+		Path:                "test.exe",
+		DefaultArgs:         []string{"-input", "{input}"},
+		EnvironmentExpanded: map[string]string{},
+	}
+
+	logPath, err := logger.WritePerFileLog(result, execConfig)
+	if err != nil {
+		t.Fatalf("Failed to write per-file log: %v", err)
+	}
+
+	// Verify file is in failed subdirectory
+	if !strings.Contains(logPath, string(filepath.Separator)+"failed"+string(filepath.Separator)) {
+		t.Errorf("Log should be in failed subdirectory, got path: %s", logPath)
+	}
+
+	// Verify log content
+	content, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("Failed to read per-file log: %v", err)
+	}
+
+	contentStr := string(content)
+	if !strings.Contains(contentStr, "FAILED") {
+		t.Error("Log should contain FAILED status")
+	}
+}
+
+func TestWritePerFileLog_Timeout(t *testing.T) {
+	tmpDir := t.TempDir()
+	perFileDir := filepath.Join(tmpDir, "per-file-logs")
+
+	logger, err := New("", perFileDir)
+	if err != nil {
+		t.Fatalf("Failed to create logger: %v", err)
+	}
+	defer logger.Close()
+
+	job := &models.Job{
+		FilePath: "C:\\data\\test.csv",
+		FileName: "test.csv",
+	}
+
+	result := models.JobResult{
+		Job:       job,
+		WorkerID:  1,
+		Success:   false,
+		TimedOut:  true,
+		ExitCode:  -1,
+		StartTime: time.Now(),
+		EndTime:   time.Now().Add(5 * time.Second),
+		Duration:  5 * time.Second,
+	}
+
+	execConfig := &models.ExecutableConfig{
+		Path:                "test.exe",
+		DefaultArgs:         []string{"-input", "{input}"},
+		EnvironmentExpanded: map[string]string{},
+	}
+
+	logPath, err := logger.WritePerFileLog(result, execConfig)
+	if err != nil {
+		t.Fatalf("Failed to write per-file log: %v", err)
+	}
+
+	// Verify file is in timeout subdirectory
+	if !strings.Contains(logPath, string(filepath.Separator)+"timeout"+string(filepath.Separator)) {
+		t.Errorf("Log should be in timeout subdirectory, got path: %s", logPath)
+	}
+
+	// Verify log content
+	content, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("Failed to read per-file log: %v", err)
+	}
+
+	contentStr := string(content)
+	if !strings.Contains(contentStr, "TIMEOUT") {
+		t.Error("Log should contain TIMEOUT status")
+	}
 }
 
 func TestWritePerFileLog_Disabled(t *testing.T) {
