@@ -223,6 +223,24 @@ func TestBuildArguments(t *testing.T) {
 			input:    "/path/to/file.csv",
 			expected: []string{"--input", "/path/to/file.csv", "--output", "result.txt"},
 		},
+		{
+			name:     "Embedded placeholder with equals",
+			template: []string{"-inp={input}", "--flag"},
+			input:    "/path/to/file.csv",
+			expected: []string{"-inp=/path/to/file.csv", "--flag"},
+		},
+		{
+			name:     "Multiple embedded placeholders",
+			template: []string{"-inp={input}", "-out={input}.out"},
+			input:    "/path/to/file.csv",
+			expected: []string{"-inp=/path/to/file.csv", "-out=/path/to/file.csv.out"},
+		},
+		{
+			name:     "Windows path with embedded placeholder",
+			template: []string{"-file={input}"},
+			input:    "C:\\data\\test.csv",
+			expected: []string{"-file=C:\\data\\test.csv"},
+		},
 	}
 
 	for _, tt := range tests {

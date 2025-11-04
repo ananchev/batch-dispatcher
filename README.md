@@ -42,13 +42,12 @@ workers:
   count: 4                                     # Number of parallel workers (minimum 1)
 
 logging:
-  log_file: "C:/data/logs/dispatcher.log"      # Central log file path
+  log_file: "C:/data/logs/dispatcher.log"      # Central log file path, timestamp added automatically, e.g., dispatcher_20251104-123045.log)
   per_file_log_directory: "C:/data/logs/executions"  # Per-file logs directory (omit or leave empty to disable per-file logs)
 
 advanced:
   show_progress: true                          # Display progress counter
-  fail_fast: false                             # Stop all workers on first error (remaining files not processed)
-  continue_on_error: false                     # Process all files despite errors (default behavior when both false)
+  continue_on_error: false                     # If true: process all files despite failures; if false: stop on first failure (fail-fast)
   dry_run: false                               # Preview execution without running (shows config, files, command template)
 ```
 
@@ -184,6 +183,9 @@ executable:
   environment:
     JAVA_HOME: "C:/Apps/Java/jdk-17"
     PATH: "${JAVA_HOME}/bin;${PATH}"           # Windows uses semicolon (;) as path separator
+    USERPROFILE: "${USERPROFILE}"              # Pass through user profile directory
+    APPDATA: "${APPDATA}"                      # Pass through application data directory
+    LOCALAPPDATA: "${LOCALAPPDATA}"            # Pass through local application data directory
     CUSTOM_VAR: "value"
 ```
 
@@ -193,6 +195,7 @@ executable:
   environment:
     JAVA_HOME: "/usr/lib/jvm/java-17"
     PATH: "${JAVA_HOME}/bin:${PATH}"           # Linux/Mac uses colon (:) as path separator
+    HOME: "${HOME}"                            # Pass through user home directory
     CUSTOM_VAR: "value"
 ```
 
@@ -249,6 +252,9 @@ executable:
   environment:
     JAVA_HOME: "C:/Apps/Java/jdk-17"
     PATH: "${JAVA_HOME}/bin;${PATH}"           # Add Java to PATH using variable expansion
+    USERPROFILE: "${USERPROFILE}"              # Pass through user profile directory
+    APPDATA: "${APPDATA}"                      # Pass through application data directory
+    LOCALAPPDATA: "${LOCALAPPDATA}"            # Pass through local application data directory
   default_args: ["-jar", "C:/tools/app.jar", "--input", "{input}"]  # Run JAR with input file
   timeout: "10m"
 ```

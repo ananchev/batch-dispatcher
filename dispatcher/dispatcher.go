@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 )
 
 // Dispatcher coordinates workers and job execution
@@ -36,14 +37,17 @@ func New(cfg *models.Config, log *logger.Logger, counter *logger.ProgressCounter
 
 // Run starts the dispatcher and processes all jobs
 func (d *Dispatcher) Run(ctx context.Context, jobs []*models.Job) error {
+	startTime := time.Now()
+	totalFiles := len(jobs)
+
 	d.logger.Info("Starting dispatcher with %d workers", d.config.Workers.Count)
-	d.logger.Info("Processing %d files", len(jobs))
+	d.logger.Info("Processing %d files", totalFiles)
 
 	// Log error handling mode
-	if d.config.Advanced.FailFast {
+	if d.config.Advanced.ContinueOnError {
+		d.logger.Info("Error handling: CONTINUE-ON-ERROR mode (process all files despite failures)")
+	} else {
 		d.logger.Info("Error handling: FAIL-FAST mode (stop on first failure)")
-	} else if d.config.Advanced.ContinueOnError {
-		d.logger.Info("Error handling: CONTINUE-ON-ERROR mode (process all files)")
 	}
 
 	// Start progress counter
@@ -86,7 +90,17 @@ func (d *Dispatcher) Run(ctx context.Context, jobs []*models.Job) error {
 	d.counter.Complete()
 
 	completed, successful, failed := d.counter.GetStats()
-	d.logger.Info("Processing complete: %d total, %d successful, %d failed", completed, successful, failed)
+	totalDuration := time.Since(startTime)
+
+	d.logger.Info("Processing complete:")
+	d.logger.Info("  Total to process: %d", totalFiles)
+	d.logger.Info("  Total processed: %d", completed)
+	d.logger.Info("  Successful: %d", successful)
+	d.logger.Info("  Failed: %d", failed)
+	if completed < totalFiles {
+		d.logger.Info("  Not processed: %d (stopped due to fail-fast)", totalFiles-completed)
+	}
+	d.logger.Info("Total processing time: %v", totalDuration.Round(time.Second))
 
 	return nil
 }
@@ -113,8 +127,8 @@ func (d *Dispatcher) worker(ctx context.Context, workerID int) {
 			// Process the job
 			result := d.processJob(ctx, job, workerID)
 
-			// Check if job failed and fail-fast is enabled
-			if !result.Success && d.config.Advanced.FailFast {
+			// Check if job failed and fail-fast is enabled (continue_on_error is false)
+			if !result.Success && !d.config.Advanced.ContinueOnError {
 				d.logger.Error("Worker %02d: Job failed, triggering fail-fast shutdown", workerID)
 				d.signalFailure()
 				d.results <- result
@@ -133,7 +147,14 @@ func (d *Dispatcher) processJob(ctx context.Context, job *models.Job, workerID i
 	// Execute the job
 	result := executor.ExecuteJob(job, &d.config.Executable, workerID)
 
-	// Log result
+	// Write per-file execution log
+	if logPath, err := d.logger.WritePerFileLog(result, &d.config.Executable); err != nil {
+		d.logger.Error("Worker %02d: Failed to write per-file log: %v", workerID, err)
+	} else if logPath != "" {
+		result.LogFilePath = logPath
+	}
+
+	// Log result to central log
 	if result.Success {
 		d.logger.LogJobComplete(result)
 	} else {

@@ -42,8 +42,7 @@ type LoggingConfig struct {
 // AdvancedConfig defines advanced options
 type AdvancedConfig struct {
 	ShowProgress    bool `yaml:"show_progress"`
-	FailFast        bool `yaml:"fail_fast"`         // Stop all workers on first failure (default: true)
-	ContinueOnError bool `yaml:"continue_on_error"` // Continue processing despite failures
+	ContinueOnError bool `yaml:"continue_on_error"` // If true, continue processing all files despite failures; if false, stop on first failure
 	DryRun          bool `yaml:"dry_run"`           // Preview execution without running
 }
 
@@ -86,6 +85,8 @@ type JobResult struct {
 	StartTime    time.Time     // When execution started
 	EndTime      time.Time     // When execution completed
 	Duration     time.Duration // Actual execution time
+	Stdout       string        // Standard output from execution
+	Stderr       string        // Standard error from execution
 	LogFilePath  string        // Path to individual log file
 	MovedTo      string        // Where file was moved (processed/ or errors/)
 	MoveError    string        // Error moving file, if any
@@ -148,7 +149,6 @@ type RuntimeParams struct {
 	LogFolder       string
 	Workers         int
 	FilePattern     string
-	FailFast        bool
 	ContinueOnError bool
 	DryRun          bool
 	CustomParams    map[string]string // --param key=value pairs
@@ -167,9 +167,6 @@ func (p *RuntimeParams) Validate() error {
 	}
 	if p.Workers < 1 {
 		return fmt.Errorf("workers must be >= 1, got %d", p.Workers)
-	}
-	if p.FailFast && p.ContinueOnError {
-		return fmt.Errorf("cannot specify both --fail-fast and --continue-on-error")
 	}
 	return nil
 }

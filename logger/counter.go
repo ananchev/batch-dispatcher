@@ -86,18 +86,13 @@ func (pc *ProgressCounter) display() {
 		eta = "calculating..."
 	}
 
-	// Move cursor up 4 lines and clear them (for in-place update)
-	if pc.completed > 1 {
-		fmt.Print("\033[4A") // Move up 4 lines
-	}
-
-	// Display progress
-	fmt.Printf("\r\033[K[%3d%%] Completed: %d/%d | Success: %d | Failed: %d\n",
+	// Display progress (without ANSI escape codes for Windows CMD compatibility)
+	fmt.Printf("[%3d%%] Completed: %d/%d | Success: %d | Failed: %d\n",
 		int(percentage), pc.completed, pc.total, pc.successful, pc.failed)
-	fmt.Printf("\033[KElapsed: %s | ETA: %s\n",
+	fmt.Printf("Elapsed: %s | ETA: %s\n",
 		formatDuration(elapsed), eta)
-	fmt.Printf("\033[K%s\n", pc.buildProgressBar(percentage))
-	fmt.Printf("\033[K\n") // Empty line for spacing
+	fmt.Printf("%s\n", pc.buildProgressBar(percentage))
+	fmt.Printf("\n") // Empty line for spacing
 }
 
 // buildProgressBar creates a visual progress bar
@@ -129,22 +124,23 @@ func (pc *ProgressCounter) Complete() {
 	pc.mu.Lock()
 	defer pc.mu.Unlock()
 
-	// Move cursor up and clear lines to overwrite progress display
-	fmt.Print("\033[4A")
-
 	elapsed := time.Since(pc.startTime)
 
-	fmt.Printf("\r\033[K\n")
-	fmt.Printf("\033[KBatch Dispatcher - Processing Complete\n")
-	fmt.Printf("\033[K========================================\n")
-	fmt.Printf("\033[KTotal processed: %d\n", pc.completed)
-	fmt.Printf("\033[K  Successful: %d\n", pc.successful)
-	fmt.Printf("\033[K  Failed: %d\n", pc.failed)
-	fmt.Printf("\033[KTotal time: %s\n", formatDuration(elapsed))
+	fmt.Printf("\n")
+	fmt.Printf("Batch Dispatcher - Processing Complete\n")
+	fmt.Printf("========================================\n")
+	fmt.Printf("Total to process: %d\n", pc.total)
+	fmt.Printf("Total processed: %d\n", pc.completed)
+	fmt.Printf("  Successful: %d\n", pc.successful)
+	fmt.Printf("  Failed: %d\n", pc.failed)
+	if pc.completed < pc.total {
+		fmt.Printf("  Not processed: %d (stopped due to fail-fast)\n", pc.total-pc.completed)
+	}
+	fmt.Printf("Total time: %s\n", formatDuration(elapsed))
 
 	if pc.completed > 0 {
 		avgTime := elapsed / time.Duration(pc.completed)
-		fmt.Printf("\033[KAverage time per file: %s\n", formatDuration(avgTime))
+		fmt.Printf("Average time per file: %s\n", formatDuration(avgTime))
 	}
 	fmt.Printf("\n")
 }

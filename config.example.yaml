@@ -78,6 +78,8 @@ workers:
 # Logging configuration
 logging:
   # Central log file for all operations
+  # A timestamp will be automatically added before the extension (e.g., dispatcher_20251104-123045.log)
+  # Each run creates a new timestamped log file, so logs from different runs are kept separate
   log_file: "C:\\data\\logs\\dispatcher.log"
   
   # Optional: Directory for per-file execution logs
@@ -91,13 +93,9 @@ advanced:
   # Enable progress display in console (counters, percentage)
   show_progress: true
   
-  # Fail-fast mode: Stop all workers on first failure (default behavior if both false)
-  # If true, first error stops all workers from picking up new jobs
-  fail_fast: false
-  
-  # Continue-on-error mode: Keep processing all files despite failures
-  # If true, failed files moved to errors/ folder, processing continues
-  # Cannot be used with fail_fast (mutually exclusive)
+  # Continue-on-error mode: Control behavior when a file fails
+  # If true: Continue processing all remaining files despite failures (failed files moved to errors/ folder)
+  # If false: Stop on first failure - no new files picked up, but in-progress files complete (fail-fast mode)
   continue_on_error: false
   
   # Dry-run mode: Preview execution plan without actually running commands

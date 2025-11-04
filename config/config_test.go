@@ -743,43 +743,7 @@ advanced:
 	}
 }
 
-// TestLoad_ConflictingErrorModes tests error when both fail_fast and continue_on_error are enabled
-func TestLoad_ConflictingErrorModes(t *testing.T) {
-	configContent := `
-executable:
-  path: "tool.exe"
-  timeout: "5m"
-input:
-  source_directory: "C:/input"
-  file_pattern: "*.csv"
-output:
-  processed_directory: "C:/processed"
-  errors_directory: "C:/errors"
-workers:
-  count: 4
-logging:
-  log_file: "test.log"
-advanced:
-  show_progress: false
-  fail_fast: true
-  continue_on_error: true
-`
-	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "test.yaml")
-	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
-		t.Fatal(err)
-	}
-
-	_, err := Load(configPath)
-	if err == nil {
-		t.Error("Expected error for conflicting fail_fast and continue_on_error, got nil")
-	}
-	if err != nil && !strings.Contains(err.Error(), "cannot enable both fail_fast and continue_on_error") {
-		t.Errorf("Expected error message about conflicting flags, got: %v", err)
-	}
-}
-
-// TestLoad_FailFastMode tests fail_fast mode can be enabled alone
+// TestLoad_FailFastMode tests fail-fast mode (default when continue_on_error is false)
 func TestLoad_FailFastMode(t *testing.T) {
 	configContent := `
 executable:
@@ -797,7 +761,7 @@ logging:
   log_file: "test.log"
 advanced:
   show_progress: false
-  fail_fast: true
+  continue_on_error: false
 `
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "test.yaml")
@@ -807,13 +771,10 @@ advanced:
 
 	cfg, err := Load(configPath)
 	if err != nil {
-		t.Fatalf("Expected no error for fail_fast alone, got: %v", err)
-	}
-	if !cfg.Advanced.FailFast {
-		t.Error("Expected FailFast to be true")
+		t.Fatalf("Expected no error for fail-fast mode (continue_on_error=false), got: %v", err)
 	}
 	if cfg.Advanced.ContinueOnError {
-		t.Error("Expected ContinueOnError to be false")
+		t.Error("Expected ContinueOnError to be false for fail-fast mode")
 	}
 }
 
@@ -846,9 +807,6 @@ advanced:
 	cfg, err := Load(configPath)
 	if err != nil {
 		t.Fatalf("Expected no error for continue_on_error alone, got: %v", err)
-	}
-	if cfg.Advanced.FailFast {
-		t.Error("Expected FailFast to be false")
 	}
 	if !cfg.Advanced.ContinueOnError {
 		t.Error("Expected ContinueOnError to be true")

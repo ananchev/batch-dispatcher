@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"strings"
 	"time"
 )
 
@@ -58,6 +59,10 @@ func ExecuteJob(job *models.Job, execConfig *models.ExecutableConfig, workerID i
 	result.EndTime = time.Now()
 	result.Duration = result.EndTime.Sub(result.StartTime)
 
+	// Capture stdout and stderr for logging
+	result.Stdout = stdout.String()
+	result.Stderr = stderr.String()
+
 	// Determine result status
 	if ctx.Err() == context.DeadlineExceeded {
 		// Timeout occurred
@@ -90,16 +95,18 @@ func ExecuteJob(job *models.Job, execConfig *models.ExecutableConfig, workerID i
 }
 
 // buildArguments replaces {input} placeholder in arguments with actual input file path
-// Example: ["--input", "{input}", "--output", "result.txt"] with inputFile "C:\data\test.csv"
+// Supports both standalone placeholders and embedded placeholders:
 //
-//	produces: ["--input", "C:\data\test.csv", "--output", "result.txt"]
+//	["--input", "{input}"] -> ["--input", "C:\data\test.csv"]
+//	["-inp={input}"] -> ["-inp=C:\data\test.csv"]
 func buildArguments(argTemplates []string, inputFile string) []string {
 	// Create new slice with same length (no growing needed)
 	args := make([]string, len(argTemplates))
 	for i, arg := range argTemplates {
-		// Exact match: if argument equals "{input}", replace with file path
-		if arg == "{input}" {
-			args[i] = inputFile
+		// Check if argument contains {input} placeholder (embedded or standalone)
+		if strings.Contains(arg, "{input}") {
+			// Replace all occurrences of {input} with file path
+			args[i] = strings.ReplaceAll(arg, "{input}", inputFile)
 		} else {
 			// Otherwise copy argument unchanged
 			args[i] = arg

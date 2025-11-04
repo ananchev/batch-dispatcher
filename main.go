@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 )
 
@@ -161,12 +162,10 @@ func printDryRunInfo(cfg *models.Config, filePaths []string) {
 
 	fmt.Println("ERROR HANDLING:")
 	fmt.Println("--------------------------------------------------------------------------------")
-	if cfg.Advanced.FailFast {
-		fmt.Println("Mode: FAIL-FAST (stop all workers on first failure)")
-	} else if cfg.Advanced.ContinueOnError {
+	if cfg.Advanced.ContinueOnError {
 		fmt.Println("Mode: CONTINUE-ON-ERROR (process all files despite failures)")
 	} else {
-		fmt.Println("Mode: DEFAULT (no specific error handling mode)")
+		fmt.Println("Mode: FAIL-FAST (stop on first failure)")
 	}
 	fmt.Println()
 
@@ -183,8 +182,9 @@ func printDryRunInfo(cfg *models.Config, filePaths []string) {
 	fmt.Println("--------------------------------------------------------------------------------")
 	fmt.Printf("%s", cfg.Executable.Path)
 	for _, arg := range cfg.Executable.DefaultArgs {
-		if arg == "{input}" {
-			fmt.Printf(" \"{input}\"")
+		if strings.Contains(arg, "{input}") {
+			// Show placeholder in template
+			fmt.Printf(" %s", arg)
 		} else {
 			fmt.Printf(" %s", arg)
 		}
@@ -197,8 +197,10 @@ func printDryRunInfo(cfg *models.Config, filePaths []string) {
 	if len(filePaths) > 0 {
 		fmt.Printf("%s", cfg.Executable.Path)
 		for _, arg := range cfg.Executable.DefaultArgs {
-			if arg == "{input}" {
-				fmt.Printf(" \"%s\"", filePaths[0])
+			if strings.Contains(arg, "{input}") {
+				// Replace {input} placeholder with actual file path
+				exampleArg := strings.ReplaceAll(arg, "{input}", filePaths[0])
+				fmt.Printf(" %s", exampleArg)
 			} else {
 				fmt.Printf(" %s", arg)
 			}

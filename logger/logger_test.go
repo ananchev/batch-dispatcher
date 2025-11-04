@@ -26,9 +26,13 @@ func TestNew(t *testing.T) {
 		t.Error("Log file should not be nil")
 	}
 
-	// Verify log file was created
-	if _, err := os.Stat(logFile); os.IsNotExist(err) {
-		t.Error("Log file was not created")
+	// Verify a timestamped log file was created (test_*.log)
+	files, err := filepath.Glob(filepath.Join(tmpDir, "test_*.log"))
+	if err != nil {
+		t.Fatalf("Failed to list log files: %v", err)
+	}
+	if len(files) == 0 {
+		t.Error("No timestamped log file was created")
 	}
 }
 
@@ -65,8 +69,17 @@ func TestLogJobStart(t *testing.T) {
 	logger.LogJobStart(job, 1)
 	logger.Close()
 
+	// Find the timestamped log file
+	files, err := filepath.Glob(filepath.Join(tmpDir, "test_*.log"))
+	if err != nil {
+		t.Fatalf("Failed to list log files: %v", err)
+	}
+	if len(files) == 0 {
+		t.Fatal("No timestamped log file was created")
+	}
+
 	// Verify log content
-	content, err := os.ReadFile(logFile)
+	content, err := os.ReadFile(files[0])
 	if err != nil {
 		t.Fatalf("Failed to read log file: %v", err)
 	}
@@ -105,8 +118,17 @@ func TestLogJobComplete(t *testing.T) {
 	logger.LogJobComplete(result)
 	logger.Close()
 
+	// Find the timestamped log file
+	files, err := filepath.Glob(filepath.Join(tmpDir, "test_*.log"))
+	if err != nil {
+		t.Fatalf("Failed to list log files: %v", err)
+	}
+	if len(files) == 0 {
+		t.Fatal("No timestamped log file was created")
+	}
+
 	// Verify log content
-	content, err := os.ReadFile(logFile)
+	content, err := os.ReadFile(files[0])
 	if err != nil {
 		t.Fatalf("Failed to read log file: %v", err)
 	}
@@ -149,8 +171,17 @@ func TestLogJobError(t *testing.T) {
 	logger.LogJobError(result)
 	logger.Close()
 
+	// Find the timestamped log file
+	files, err := filepath.Glob(filepath.Join(tmpDir, "test_*.log"))
+	if err != nil {
+		t.Fatalf("Failed to list log files: %v", err)
+	}
+	if len(files) == 0 {
+		t.Fatal("No timestamped log file was created")
+	}
+
 	// Verify log content
-	content, err := os.ReadFile(logFile)
+	content, err := os.ReadFile(files[0])
 	if err != nil {
 		t.Fatalf("Failed to read log file: %v", err)
 	}
@@ -193,8 +224,17 @@ func TestLogJobError_Timeout(t *testing.T) {
 	logger.LogJobError(result)
 	logger.Close()
 
+	// Find the timestamped log file
+	files, err := filepath.Glob(filepath.Join(tmpDir, "test_*.log"))
+	if err != nil {
+		t.Fatalf("Failed to list log files: %v", err)
+	}
+	if len(files) == 0 {
+		t.Fatal("No timestamped log file was created")
+	}
+
 	// Verify log content
-	content, err := os.ReadFile(logFile)
+	content, err := os.ReadFile(files[0])
 	if err != nil {
 		t.Fatalf("Failed to read log file: %v", err)
 	}
@@ -205,7 +245,7 @@ func TestLogJobError_Timeout(t *testing.T) {
 	}
 }
 
-func TestCreatePerFileLog(t *testing.T) {
+func TestWritePerFileLog(t *testing.T) {
 	tmpDir := t.TempDir()
 	perFileDir := filepath.Join(tmpDir, "per-file-logs")
 
@@ -220,18 +260,31 @@ func TestCreatePerFileLog(t *testing.T) {
 		FileName: "test.csv",
 	}
 
-	logPath, closer, err := logger.CreatePerFileLog(job, 1)
+	result := models.JobResult{
+		Job:       job,
+		WorkerID:  1,
+		Success:   true,
+		ExitCode:  0,
+		StartTime: time.Now(),
+		EndTime:   time.Now().Add(500 * time.Millisecond),
+		Duration:  500 * time.Millisecond,
+		Stdout:    "test output",
+		Stderr:    "",
+	}
+
+	execConfig := &models.ExecutableConfig{
+		Path:                "test.exe",
+		DefaultArgs:         []string{"-input", "{input}"},
+		EnvironmentExpanded: map[string]string{"VAR1": "value1"},
+	}
+
+	logPath, err := logger.WritePerFileLog(result, execConfig)
 	if err != nil {
-		t.Fatalf("Failed to create per-file log: %v", err)
+		t.Fatalf("Failed to write per-file log: %v", err)
 	}
 
 	if logPath == "" {
 		t.Error("Log path should not be empty")
-	}
-
-	// Close the log
-	if err := closer(); err != nil {
-		t.Errorf("Failed to close per-file log: %v", err)
 	}
 
 	// Verify log file exists
@@ -239,7 +292,7 @@ func TestCreatePerFileLog(t *testing.T) {
 		t.Error("Per-file log was not created")
 	}
 
-	// Verify log content has header and footer
+	// Verify log content
 	content, err := os.ReadFile(logPath)
 	if err != nil {
 		t.Fatalf("Failed to read per-file log: %v", err)
@@ -252,12 +305,21 @@ func TestCreatePerFileLog(t *testing.T) {
 	if !strings.Contains(contentStr, "Worker: 01") {
 		t.Error("Log should contain worker ID")
 	}
-	if !strings.Contains(contentStr, "Completed:") {
-		t.Error("Log should contain completion footer")
+	if !strings.Contains(contentStr, "COMMAND:") {
+		t.Error("Log should contain command section")
+	}
+	if !strings.Contains(contentStr, "STANDARD OUTPUT:") {
+		t.Error("Log should contain stdout section")
+	}
+	if !strings.Contains(contentStr, "test output") {
+		t.Error("Log should contain stdout content")
+	}
+	if !strings.Contains(contentStr, "SUCCESS") {
+		t.Error("Log should contain success status")
 	}
 }
 
-func TestCreatePerFileLog_Disabled(t *testing.T) {
+func TestWritePerFileLog_Disabled(t *testing.T) {
 	logger, err := New("", "")
 	if err != nil {
 		t.Fatalf("Failed to create logger: %v", err)
@@ -269,7 +331,22 @@ func TestCreatePerFileLog_Disabled(t *testing.T) {
 		FileName: "test.csv",
 	}
 
-	logPath, closer, err := logger.CreatePerFileLog(job, 1)
+	result := models.JobResult{
+		Job:       job,
+		WorkerID:  1,
+		Success:   true,
+		ExitCode:  0,
+		StartTime: time.Now(),
+		EndTime:   time.Now().Add(500 * time.Millisecond),
+		Duration:  500 * time.Millisecond,
+	}
+
+	execConfig := &models.ExecutableConfig{
+		Path:        "test.exe",
+		DefaultArgs: []string{"-input", "{input}"},
+	}
+
+	logPath, err := logger.WritePerFileLog(result, execConfig)
 	if err != nil {
 		t.Fatalf("Should not error when per-file logging disabled: %v", err)
 	}
@@ -277,9 +354,163 @@ func TestCreatePerFileLog_Disabled(t *testing.T) {
 	if logPath != "" {
 		t.Error("Log path should be empty when per-file logging disabled")
 	}
+}
 
-	// Closer should be no-op
-	if err := closer(); err != nil {
-		t.Errorf("Closer should not error: %v", err)
+func TestAddTimestampToFilename(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		wantBase string
+		wantExt  string
+	}{
+		{
+			name:     "simple log file",
+			input:    "dispatcher.log",
+			wantBase: "dispatcher_",
+			wantExt:  ".log",
+		},
+		{
+			name:     "full path with extension",
+			input:    "C:\\data\\logs\\batch.log",
+			wantBase: "C:\\data\\logs\\batch_",
+			wantExt:  ".log",
+		},
+		{
+			name:     "file without extension",
+			input:    "logfile",
+			wantBase: "logfile_",
+			wantExt:  "",
+		},
+		{
+			name:     "multiple dots in name",
+			input:    "app.dispatcher.log",
+			wantBase: "app.dispatcher_",
+			wantExt:  ".log",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := addTimestampToFilename(tt.input)
+
+			// Check that it starts with the expected base
+			if !strings.HasPrefix(result, tt.wantBase) {
+				t.Errorf("Expected result to start with %q, got %q", tt.wantBase, result)
+			}
+
+			// Check that it ends with the expected extension
+			if !strings.HasSuffix(result, tt.wantExt) {
+				t.Errorf("Expected result to end with %q, got %q", tt.wantExt, result)
+			}
+
+			// Check that timestamp is in the middle (format: 20060102-150405)
+			// Extract the middle part between base and extension
+			middle := result[len(tt.wantBase) : len(result)-len(tt.wantExt)]
+			if len(middle) != 15 { // YYYYMMDD-HHMMSS = 15 chars
+				t.Errorf("Expected timestamp length 15, got %d in %q", len(middle), middle)
+			}
+
+			// Verify timestamp format (digits and dash)
+			if len(middle) > 0 && middle[8] != '-' {
+				t.Errorf("Expected dash at position 8 in timestamp, got %q", middle)
+			}
+		})
+	}
+}
+
+func TestNew_CreatesTimestampedLogFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	baseLogFile := filepath.Join(tmpDir, "test.log")
+
+	// Create first logger
+	logger1, err := New(baseLogFile, "")
+	if err != nil {
+		t.Fatalf("Failed to create first logger: %v", err)
+	}
+	logger1.Close()
+
+	// Small delay to ensure different timestamp
+	time.Sleep(1 * time.Second)
+
+	// Create second logger with same base name
+	logger2, err := New(baseLogFile, "")
+	if err != nil {
+		t.Fatalf("Failed to create second logger: %v", err)
+	}
+	logger2.Close()
+
+	// Check that multiple timestamped files were created
+	files, err := filepath.Glob(filepath.Join(tmpDir, "test_*.log"))
+	if err != nil {
+		t.Fatalf("Failed to list log files: %v", err)
+	}
+
+	if len(files) < 2 {
+		t.Errorf("Expected at least 2 timestamped log files, got %d: %v", len(files), files)
+	}
+
+	// Verify no file named exactly "test.log" exists (should all have timestamps)
+	if _, err := os.Stat(baseLogFile); !os.IsNotExist(err) {
+		t.Error("Base log file without timestamp should not exist")
+	}
+}
+
+func TestNew_TimestampedLogsAreIndependent(t *testing.T) {
+	tmpDir := t.TempDir()
+	baseLogFile := filepath.Join(tmpDir, "test.log")
+
+	// Create first logger and write message
+	logger1, err := New(baseLogFile, "")
+	if err != nil {
+		t.Fatalf("Failed to create first logger: %v", err)
+	}
+	logger1.Info("First message")
+	logger1.Close()
+
+	// Small delay to ensure different timestamp
+	time.Sleep(1 * time.Second)
+
+	// Create second logger and write different message
+	logger2, err := New(baseLogFile, "")
+	if err != nil {
+		t.Fatalf("Failed to create second logger: %v", err)
+	}
+	logger2.Info("Second message")
+	logger2.Close()
+
+	// Get all timestamped files
+	files, err := filepath.Glob(filepath.Join(tmpDir, "test_*.log"))
+	if err != nil {
+		t.Fatalf("Failed to list log files: %v", err)
+	}
+
+	if len(files) != 2 {
+		t.Errorf("Expected exactly 2 timestamped log files, got %d: %v", len(files), files)
+	}
+
+	// Read and verify first file contains only first message
+	content1, err := os.ReadFile(files[0])
+	if err != nil {
+		t.Fatalf("Failed to read first log file: %v", err)
+	}
+	content1Str := string(content1)
+	if !strings.Contains(content1Str, "First message") {
+		t.Error("First log file should contain 'First message'")
+	}
+	if strings.Contains(content1Str, "Second message") {
+		t.Error("First log file should not contain 'Second message'")
+	}
+
+	// Read and verify second file contains only second message
+	content2, err := os.ReadFile(files[1])
+	if err != nil {
+		t.Fatalf("Failed to read second log file: %v", err)
+	}
+	content2Str := string(content2)
+	if !strings.Contains(content2Str, "Second message") {
+		t.Error("Second log file should contain 'Second message'")
+	}
+	if strings.Contains(content2Str, "First message") {
+		t.Error("Second log file should not contain 'First message'")
 	}
 }

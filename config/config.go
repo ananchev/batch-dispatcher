@@ -50,11 +50,6 @@ func Load(configPath string) (*models.Config, error) {
 		return nil, fmt.Errorf("input.max_files cannot be negative, got %d", config.Input.MaxFiles)
 	}
 
-	// Validate conflicting flags
-	if config.Advanced.FailFast && config.Advanced.ContinueOnError {
-		return nil, fmt.Errorf("cannot enable both fail_fast and continue_on_error")
-	}
-
 	// Expand environment variables in working_directory
 	if config.Executable.WorkingDirectory != "" {
 		sysEnv := getSystemEnvironment()
